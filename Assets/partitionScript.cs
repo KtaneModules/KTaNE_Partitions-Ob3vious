@@ -13,12 +13,12 @@ public class partitionScript : MonoBehaviour {
 	public KMSelectable[] Pixel;
 	public TextMesh Text;
 
-	private int[,] colour = new int[25, 3];
-	private int[][] Groups = new int[25][];
-	private int[][] TempGroups = new int[0][];
-	private int[] TempGroups2 = { };
-	private int[] targetGrouping = new int[0];
-	private int[] selectedGroups = new int[0];
+	private List<int[]> colour = new List<int[]> { };
+	private List<List<int>> Groups = new List<List<int>> { };
+	private List<List<int>> TempGroups = new List<List<int>> { };
+	private List<int> TempGroups2 = new List<int> { };
+	private List<int> targetGrouping = new List<int> { };
+	private List<int> selectedGroups = new List<int> { };
 	private bool selecting = false;
 	private bool unsolved = true;
 
@@ -35,149 +35,62 @@ public class partitionScript : MonoBehaviour {
 				if (unsolved)
 				{
 					Audio.PlaySoundAtTransform("Select", Module.transform);
-					if (!selecting)
+					if (selecting)
 					{
-						bool proceed = true;
-						for (int j = 0; j < TempGroups.Length; j++)
-						{
-							if (TempGroups[j].Contains(x))
-							{
-								proceed = false;
-							}
+						TempGroups2.Add(0);
+						List<int> TempSet = new List<int> { };
+                        foreach (int group in selectedGroups)
+                        {
+							TempSet = TempSet.Concat(Groups[group]).ToList();
+							TempGroups2[TempGroups2.Count() - 1]++;
 						}
-						if (proceed)
-						{
-							int groupbit = 0;
-							for (int j = 0; j < Groups.Length; j++)
-							{
-								if (Groups[j].Contains(x))
-								{
-									groupbit = j;
-								}
-							}
-							foreach (var pixel in Groups[groupbit])
-							{
-								Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(0.125f, 0.125f, 0.125f);
-							}
-							selectedGroups = selectedGroups.Concat(new int[] { groupbit }).ToArray();
-							selecting = true;
-							Text.text = string.Empty;
-						}
-					}
-					else
-					{
-						TempGroups = TempGroups.Concat(new int[][] { new int[] { } }).ToArray();
-						TempGroups2 = TempGroups2.Concat(new int[] { 0 }).ToArray();
-						for (int j = 0; j < selectedGroups.Length; j++)
-						{
-							TempGroups[TempGroups.Length - 1] = TempGroups[TempGroups.Length - 1].Concat(Groups[selectedGroups[j]]).ToArray();
-							TempGroups2[TempGroups2.Length - 1]++;
-						}
-						foreach (var pixel in TempGroups[TempGroups.Length - 1])
-						{
+						TempGroups.Add(TempSet);
+						foreach (int pixel in TempGroups.Last())
 							Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(0.375f, 0.375f, 0.375f);
-						}
-						selectedGroups = new int[0];
+						selectedGroups = new List<int> { };
 						selecting = false;
-						int proceed = 0;
-						for (int j = 0; j < TempGroups.Length; j++)
-						{
-							proceed += TempGroups[j].Length;
-						}
-						if (proceed == Pixel.Length)
-						{
+						if (TempGroups.Sum(y => y.Count()) == Pixel.Length)
 							Reorganise();
-						}
+					}
+					else if (!TempGroups.Any(y => y.Contains(x)))
+					{
+						int groupbit = Enumerable.Range(0, Groups.Count()).First(y => Groups[y].Contains(x));
+						foreach (int pixel in Groups[groupbit])
+							Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(0.125f, 0.125f, 0.125f);
+						selectedGroups.Add(groupbit);
+						selecting = true;
+						Text.text = string.Empty;
 					}
 				}
 				return false;
 			};
 			Pixel[x].OnHighlight += delegate
 			{
-				if (unsolved)
+				if (unsolved && !TempGroups.Any(y => y.Contains(x)))
 				{
-					int groupbit = 0;
-					for (int j = 0; j < Groups.Length; j++)
+					int groupbit = Enumerable.Range(0, Groups.Count()).First(y => Groups[y].Contains(x));
+					if (!selecting)
 					{
-						if (Groups[j].Contains(x))
-						{
-							groupbit = j;
-						}
+						foreach (int pixel in Groups[groupbit])
+							Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(0.875f, 0.875f, 0.875f);
+						Text.text = colour[groupbit].Join("") + " - " + (groupbit + 1).ToString();
 					}
-					if (selecting)
+					else if (!selectedGroups.Contains(groupbit))
 					{
-						bool proceed = true;
-						for (int j = 0; j < TempGroups.Length; j++)
-						{
-							if (TempGroups[j].Contains(x))
-							{
-								proceed = false;
-							}
-						}
-						if (proceed)
-						{
-							if (!selectedGroups.Contains(groupbit))
-							{
-								selectedGroups = selectedGroups.Concat(new int[] { groupbit }).ToArray();
-								foreach (var pixel in Groups[groupbit])
-								{
-									Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(0.125f, 0.125f, 0.125f);
-								}
-							}
-						}
-					}
-					else
-					{
-						bool proceed = true;
-						for (int j = 0; j < TempGroups.Length; j++)
-						{
-							if (TempGroups[j].Contains(x))
-							{
-								proceed = false;
-							}
-						}
-						if (proceed)
-						{
-							foreach (var pixel in Groups[groupbit])
-							{
-								Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(0.875f, 0.875f, 0.875f);
-							}
-							Text.text = colour[groupbit, 0].ToString() + colour[groupbit, 1].ToString() + colour[groupbit, 2].ToString() + " - " + (groupbit + 1).ToString();
-						}
+						selectedGroups.Add(groupbit);
+						foreach (int pixel in Groups[groupbit])
+							Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(0.125f, 0.125f, 0.125f);
 					}
 				}
 			};
 			Pixel[x].OnHighlightEnded += delegate
 			{
-				if (unsolved)
+				if (unsolved && !selecting && !TempGroups.Any(y => y.Contains(x)))
 				{
-					if (!selecting)
-					{
-						bool proceed = true;
-						for (int j = 0; j < TempGroups.Length; j++)
-						{
-							if (TempGroups[j].Contains(x))
-							{
-								proceed = false;
-							}
-						}
-						if (proceed)
-						{
-							int groupbit = 0;
-							for (int j = 0; j < Groups.Length; j++)
-							{
-								if (Groups[j].Contains(x))
-								{
-									groupbit = j;
-								}
-							}
-							foreach (var pixel in Groups[groupbit])
-							{
-								Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(colour[groupbit, 0] / 4f, colour[groupbit, 1] / 4f, colour[groupbit, 2] / 4f);
-							}
-							Text.text = string.Empty;
-						}
-					}
+					int groupbit = Enumerable.Range(0, Groups.Count()).First(y => Groups[y].Contains(x));
+					foreach (int pixel in Groups[groupbit])
+						Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(colour[groupbit][0] / 4f, colour[groupbit][1] / 4f, colour[groupbit][2] / 4f);
+					Text.text = string.Empty;
 				}
 			};
 		}
@@ -188,87 +101,64 @@ public class partitionScript : MonoBehaviour {
 		Text.text = string.Empty;
 		for (int i = 0; i < Pixel.Length; i++)
 		{
-			Groups[i] = new int[] { i };
-			for (int j = 0; j < 3; j++)
-			{
-				colour[i, j] = Rnd.Range(0, 5);
-			}
-			Pixel[i].GetComponent<MeshRenderer>().material.color = new Color(colour[i, 0] / 4f, colour[i, 1] / 4f, colour[i, 2] / 4f);
+			Groups.Add(new List<int> { i });
+			colour.Add(new int[] { Rnd.Range(0, 5), Rnd.Range(0, 5), Rnd.Range(0, 5) });
+			Pixel[i].GetComponent<MeshRenderer>().material.color = new Color(colour[i][0] / 4f, colour[i][1] / 4f, colour[i][2] / 4f);
 		}
 		CalcGrouping();
 	}
 
 	void CalcGrouping()
 	{
-		targetGrouping = new int[0];
-		int togroup = Groups.Length;
-		int[] stuffleft = new int[0];
-		for (int i = 0; i < Groups.Length; i++)
-		{
-			stuffleft = stuffleft.Concat(new int[] { colour[i, 0] + colour[i, 1] + colour[i, 2] }).ToArray();
-		}
+		Debug.LogFormat("[Partitions #{0}] The current group colours are {1}.", _moduleId, colour.Select(x => x.Join("")).Join(", "));
+		targetGrouping = new List<int> { };
+		int togroup = Groups.Count();
+		List<int> stuffleft = new List<int> { };
+		for (int i = 0; i < Groups.Count(); i++)
+			stuffleft.Add(colour[i].Sum());
 		while (togroup > 0)
 		{
-			int number = 0;
-			for (int i = 0; i < stuffleft.Length; i++)
-			{
-				number += stuffleft[i];
-			}
-			Debug.LogFormat("[Partitions #{0}] The total number is currently {1}. Inspecting grouplet {2} adds a group of {3}.", _moduleId, number, number % stuffleft.Length + 1, ReducMod(stuffleft[number % stuffleft.Length], togroup) + 1);
-			targetGrouping = targetGrouping.Concat(new int[] { ReducMod(stuffleft[number % stuffleft.Length], togroup) + 1 }).ToArray();
+			int number = stuffleft.Sum();
+			Debug.LogFormat("[Partitions #{0}] The total number is currently {1}. Inspecting grouplet {2} adds a group of {3}.", _moduleId, number, number % stuffleft.Count() + 1, ReducMod(stuffleft[number % stuffleft.Count()], togroup) + 1);
+			targetGrouping.Add(ReducMod(stuffleft[number % stuffleft.Count()], togroup) + 1);
 			togroup -= targetGrouping.Last();
-			stuffleft = stuffleft.Take(number % stuffleft.Length).ToArray().Concat(stuffleft.Skip(number % stuffleft.Length + 1).ToArray()).ToArray();
+			stuffleft.RemoveAt(number % stuffleft.Count());
 		}
-		targetGrouping = targetGrouping.OrderBy(x => x).ToArray();
+		targetGrouping = targetGrouping.OrderBy(x => x).ToList();
 		if (!(targetGrouping.Last() == 1))
-		{
 			Debug.LogFormat("[Partitions #{0}] The expected grouping is [{1}].", _moduleId, targetGrouping.Join(", "));
-		}
+		else if (targetGrouping.Count() == 1)
+			Debug.LogFormat("[Partitions #{0}] Oh wait! the module is solved.", _moduleId);
 		else
 		{
-			if (targetGrouping.Length == 1)
-			{
-				Debug.LogFormat("[Partitions #{0}] Oh wait! the module is solved.", _moduleId);
-			}
-			else
-			{
-				targetGrouping = targetGrouping.Take(targetGrouping.Length - 2).Concat(new int[] { 2 }).ToArray();
-				Debug.LogFormat("[Partitions #{0}] The expected grouping is [{1}].", _moduleId, targetGrouping.Join(", "));
-			}
+			targetGrouping = targetGrouping.Take(targetGrouping.Count() - 2).Concat(new int[] { 2 }).ToList();
+			Debug.LogFormat("[Partitions #{0}] The expected grouping is [{1}].", _moduleId, targetGrouping.Join(", "));
 		}
 	}
 
 	void Reorganise()
 	{
-		TempGroups2 = TempGroups2.OrderBy(x => x).ToArray();
+		TempGroups2 = TempGroups2.OrderBy(x => x).ToList();
 		bool proceed = true;
-		for (int i = 0; i < TempGroups2.Length && i < targetGrouping.Length; i++)
-		{
+		for (int i = 0; i < TempGroups2.Count() && i < targetGrouping.Count(); i++)
 			if (TempGroups2[i] != targetGrouping[i])
-			{
 				proceed = false;
-			}
-		}
 		if (proceed)
 		{
 			Debug.LogFormat("[Partitions #{0}] Your grouping is correct!", _moduleId);
-			Groups = TempGroups.OrderBy(x => x.Min()).ToArray();
+			Groups = TempGroups.OrderBy(x => x.Min()).ToList();
 		}
 		else
 		{
 			Debug.LogFormat("[Partitions #{0}] Your grouping of [{1}] does not match the expected grouping of [{2}].", _moduleId, TempGroups2.Join(", "), targetGrouping.Join(", "));
 			Module.HandleStrike();
-			for (int i = 0; i < Groups.Length; i++)
-			{
-				foreach (var pixel in Groups[i])
-				{
-					Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(colour[i, 0] / 4f, colour[i, 1] / 4f, colour[i, 2] / 4f);
-				}
-			}
+			for (int i = 0; i < Groups.Count(); i++)
+				foreach (int pixel in Groups[i])
+					Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(colour[i][0] / 4f, colour[i][1] / 4f, colour[i][2] / 4f);
 		}
-		TempGroups = new int[0][];
-		TempGroups2 = new int[] { };
-		if (Groups.Length == 1)
+		TempGroups = new List<List<int>> { };
+		TempGroups2 = new List<int> { };
+		if (Groups.Count() == 1)
 		{
 			Module.HandlePass();
 			unsolved = false;
@@ -283,31 +173,31 @@ public class partitionScript : MonoBehaviour {
 
 	void Regroup()
 	{
-		colour = new int[Groups.Length, 3];
-		for (int i = 0; i < Groups.Length; i++)
+		colour = new List<int[]> { };
+		for (int i = 0; i < Groups.Count(); i++)
 		{
-			for (int j = 0; j < 3; j++)
-			{
-				colour[i, j] = Rnd.Range(0, 5);
-			}
-			foreach (var pixel in Groups[i])
-			{
-				Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(colour[i, 0] / 4f, colour[i, 1] / 4f, colour[i, 2] / 4f);
-			}
+			colour.Add(new int[] { Rnd.Range(0, 5), Rnd.Range(0, 5), Rnd.Range(0, 5) });
+			foreach (int pixel in Groups[i])
+				Pixel[pixel].GetComponent<MeshRenderer>().material.color = new Color(colour[i][0] / 4f, colour[i][1] / 4f, colour[i][2] / 4f);
 		}
 	}
 
 	int ReducMod(int a, int b)
 	{
-		int x = a;
 		for (int i = b; i > 0; i--)
-		{
-			if (x >= i)
-				x -= i;
+			if (a >= i)
+				a -= i;
 			else
-				return x;
-		}
+				return a;
 		return 0;
+	}
+
+	IEnumerator TwitchHighlight(int pos)
+    {
+		Pixel[pos].OnHighlight();
+		for (float t = 0f; t < 1; t += Time.deltaTime)
+			yield return null;
+		Pixel[pos].OnHighlightEnded();
 	}
 
 #pragma warning disable 414
@@ -326,71 +216,62 @@ public class partitionScript : MonoBehaviour {
 			yield break;
 		}
 		for (int i = 1; i < cmds.Length; i++)
-		{
 			if (!validcoords.Contains(cmds[i]))
 			{
 				yield return "sendtochaterror Invalid command.";
 				yield break;
 			}
-		}
 		for (int i = 1; i < cmds.Length; i++)
-		{
 			for (int j = 0; j < validcoords.Length; j++)
-			{
 				if (validcoords[j] == cmds[i])
 				{
-					Pixel[j].OnHighlight();
 					if (cmds[0] == validcmds[0])
 					{
-						yield return new WaitForSeconds(1f);
+						StartCoroutine(TwitchHighlight(j));
+						for (float t = 0f; t < 1; t += Time.deltaTime)
+							yield return "trycancel Highlighting tiles has been stopped.";
 					}
 					else
 					{
-						yield return null;
+						Pixel[j].OnHighlight();
 						if (i == 1)
 						{
 							Pixel[j].OnInteract();
 							yield return null;
 						}
-						if (i == cmds.Length - 1)
-						{
+                        if (i == cmds.Length - 1)
+                        {
 							Pixel[j].OnInteract();
 							yield return null;
 						}
+						Pixel[j].OnHighlightEnded();
 					}
-					Pixel[j].OnHighlightEnded();
+					
 				}
-			}
-		}
 	}
 
 	IEnumerator TwitchHandleForcedSolve()
 	{
 		yield return true;
-		int[] numbers = new int[25];
-		for (int i = 0; i < numbers.Length; i++)
-		{
-			numbers[i] = i;
-		}
-		selectedGroups = new int[0];
-		TempGroups = new int[0][];
-		TempGroups2 = new int[] { };
+		selectedGroups = new List<int> { };
+		TempGroups = new List<List<int>> { };
+		TempGroups2 = new List<int> { };
 		while (unsolved)
 		{
-			for (int i = 0; i < targetGrouping.Length; i++)
+			for (int i = 0; i < targetGrouping.Count(); i++)
 			{
-				Pixel[numbers.Where(x => !TempGroups.Any(y => y.Contains(x))).Min()].OnInteract();
+				Pixel[Enumerable.Range(0, 25).First(x => !TempGroups.Any(y => y.Contains(x)))].OnInteract();
 				yield return null;
-				for (int j = numbers.Where(x => !TempGroups.Any(y => y.Contains(x))).Min(); selectedGroups.Length < targetGrouping[i]; j++)
+				for (int j = Enumerable.Range(0, 25).First(x => !TempGroups.Any(y => y.Contains(x))); selectedGroups.Count() < targetGrouping[i]; j++)
 				{
 					Pixel[j].OnHighlight();
 					yield return null;
 				}
 				yield return null;
 				Pixel[Groups[selectedGroups[0]][0]].OnInteract();
-				yield return true;
+				yield return null;
 			}
-			yield return true;
+			yield return null;
 		}
 	}
 }

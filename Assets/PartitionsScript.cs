@@ -109,7 +109,10 @@ public class PartitionsScript : MonoBehaviour
                 {
                     int index = int.Parse(capture.ToString()) - 1;
                     if (index >= _manager.GetGroups().Count || index == -1)
+                    {
                         yield return "sendtochaterror Invalid command.";
+                        yield break;
+                    }
                 }
 
             foreach (Match match in matches)

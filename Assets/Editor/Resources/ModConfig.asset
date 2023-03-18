@@ -17,6 +17,6 @@ MonoBehaviour:
   description: 'A module about a number theory thing.
 
     Enjoy! ||:)||'
-  version: 1.1
+  version: 1.2
   outputFolder: build
-  previewImage: {fileID: 2800000, guid: 2d8226667f75b8246b929ec1f5b0267d, type: 3}
+  previewImage: {fileID: 2800000, guid: 9d7ed6751fd9aa34da8a79d95aa04a2f, type: 3}

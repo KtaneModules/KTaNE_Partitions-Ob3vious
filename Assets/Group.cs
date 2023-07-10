@@ -123,6 +123,11 @@ public class Group {
         }
     }
 
+    public bool CanSelect()
+    {
+        return !_isRegrouped;
+    }
+
     public void SetColor(int r, int g, int b)
     {
         _color = new int[] { r, g, b };

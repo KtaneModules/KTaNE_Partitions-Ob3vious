@@ -17,7 +17,7 @@ public class Unit {
 
         _selectable.OnInteract += delegate
         {
-            if (_parent != null)
+            if (_parent != null && _parent.CanSelect())
             {
                 _selectable.AddInteractionPunch(0.25f);
                 _parent.Press();
